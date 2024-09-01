@@ -1,0 +1,7 @@
+lakefs==0.7.1
+lakefs-sdk==1.32.0
+scikit-learn==1.5.1
+python-dotenv==1.0.1
+requests==2.32.3
+click==8.1.7
+GitPython==3.1.43
