@@ -9,4 +9,5 @@ def get_git_branch():
     except Exception as e:
         return None
 
+
 CURRENT_BRANCH = get_git_branch()
