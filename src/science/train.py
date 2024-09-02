@@ -14,6 +14,7 @@ from pathlib import Path
 
 load_dotenv(dotenv_path)
 
+
 def predict_fn(input_data, model):
     prediction = model.predict(input_data)
     pred_prob = model.predict_proba(input_data)
