@@ -19,3 +19,6 @@ GITHUB_COMMITS_PROCESSED_DIR_PATH = Path(
 GITHUB_REPOSITORIES_PROCESSED_DIR_PATH = Path(
     os.path.join(GITHUB_PROCESSED_DATA_DIR, "repositories")
 )
+
+# GIT
+REPOSITORY_URL = "https://github.com/Itzblend/actual-mlops"
