@@ -10,6 +10,9 @@ from src.paths import (
 import os
 import shutil
 from io import StringIO
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 @click.group
