@@ -45,9 +45,14 @@ jobs:
         python -m src.engineering.github.collector \
         collect-commits -o apache -r kafka
 
+    - name: Process Repositories
+      run: |
+        python -m src.engineering.github.process-pandas process-repositories
+
     - name: DVC
       run: |
-        dvc add src/engineering/github/data/
+        dvc add src/engineering/github/data/raw/
+        dvc add src/engineering/github/data/processed/
         dvc push
 
     - name: Push updated dvc files

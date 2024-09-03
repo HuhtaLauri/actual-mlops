@@ -11,6 +11,7 @@ import os
 import shutil
 from io import StringIO
 from dotenv import load_dotenv
+from src.utils import CURRENT_BRANCH
 
 load_dotenv()
 
@@ -27,13 +28,17 @@ def process_repositories():
     )
     os.makedirs(os.path.join(GITHUB_REPOSITORIES_PROCESSED_DIR_PATH), exist_ok=True)
 
-    fs = DVCFileSystem(REPOSITORY_URL, rev="main")
+    fs = DVCFileSystem(REPOSITORY_URL, rev=CURRENT_BRANCH)
 
     text = fs.read_text(
         os.path.join(GITHUB_REPOSITORIES_RAW_DIR_PATH, "repositories.json"),
         recursive=False,
     )
-    df = pd.read_json(StringIO(text), lines=True)
+    if not text or not isinstance(text, str):
+        raise ValueError
+
+    data = StringIO(text)
+    df = pd.read_json(data, lines=True)
     for col in df.columns:
         if col.endswith("_url"):
             df = df.drop(col, axis=1)
