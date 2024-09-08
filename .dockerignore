@@ -1,0 +1,7 @@
+.dvc
+.git
+.github
+.env
+*.md
+Makefile
+
