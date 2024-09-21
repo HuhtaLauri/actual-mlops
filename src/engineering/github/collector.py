@@ -62,10 +62,23 @@ def _write_dict_data(
 def _write_list_data(
     result: List, destination: Path, mode: WriteMode = WriteMode.APPEND
 ):
-    with open(destination, str(mode.value)) as out_file:
-        for row in result:
-            out_file.write(json.dumps(row))
-            out_file.write("\n")
+    from itertools import groupby
+    groups = []
+    keys = []
+
+    for k, g in groupby(result, lambda x: str(x["commit"]["committer"]["date"])[:10]):
+        groups.append(list(g))      # Store group iterator as a list
+        keys.append(k)
+
+    for k, g in zip(keys, groups):
+        out_dirpath = os.path.join(destination, k.replace("-", "/"))
+        out_filepath = os.path.join(out_dirpath, "data.json")
+        
+        os.makedirs(out_dirpath, exist_ok=True)
+        with open(out_filepath, "a") as out_file:
+            for row in g:
+                out_file.write(json.dumps(row))
+                out_file.write("\n")
 
 
 def collect_repositories(repositories: List[Repository]):
@@ -93,56 +106,30 @@ def _collect_repository_data(repo: Repository):
         raise ValueError("No repository data found")
 
 
-def set_commit_params(
-    starttime: Union[str, None] = None, endtime: Union[str, None] = None
-) -> Dict[str, str]:
-    if isinstance(starttime, str):
-        try:
-            start = datetime.strptime(starttime, "%Y-%m-%d")
-        except ValueError:
-            raise ValueError(
-                f"Invalid starttime format: {starttime}. Expected format: YYYY-MM-DD."
-            )
-    else:
-        start = datetime.now() - timedelta(days=7)
-
-    if isinstance(endtime, str):
-        try:
-            end = datetime.strptime(endtime, "%Y-%m-%d")
-        except ValueError:
-            raise ValueError(
-                f"Invalid endtime format: {starttime}. Expected format: YYYY-MM-DD."
-            )
-    else:
-        end = datetime.now()
-
-    return {"since": start.isoformat(), "until": end.isoformat()}
-
 
 def collect_commits(
     repositories: List[Repository],
-    starttime: Union[str, None],
-    endtime: Union[str, None],
+    since: datetime,
+    until: datetime,
 ):
     shutil.rmtree(GITHUB_COMMITS_RAW_DIR_PATH, ignore_errors=True)
     os.makedirs(GITHUB_COMMITS_RAW_DIR_PATH, exist_ok=True)
 
-    params = set_commit_params(starttime, endtime)
+    commits = []
 
-    commits = {}
+    params = {
+        "since": since,
+        "until": until
+    }
+
     for repo in repositories:
-        fullname = repo.owner + "-" + repo.name
-        commits[fullname] = _collect_commits_data(repo, params)
+        commits = commits + _collect_commits_data(repo, params)
 
-    repo_keys = list(commits.keys())
-    for repo_key in repo_keys:
-        destination_file = Path(
-            os.path.join(GITHUB_COMMITS_RAW_DIR_PATH, f"{repo_key}.json")
-        )
-        write_result_to_disk(commits[repo_key], destination_file, WriteMode.APPEND)
+    return commits
 
+    
 
-def _collect_commits_data(repo: Repository, params: Dict[str, str]):
+def _collect_commits_data(repo: Repository, params: Dict[str, datetime]) -> list:
     url = construct_api_url("repos", repo.owner, repo.name, "commits")
     resp = get_api_data(url)
 
@@ -175,68 +162,63 @@ def read_repos_from_file(filepath: Path) -> List[Repository]:
     return repos
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="A CLI tool for GitHub data collection."
-    )
+def main(source: str, repos: list, since: datetime, until: datetime):
+    print(repos)
+    repos = list(map(lambda repo: Repository(*repo.split('/')), repos))
 
-    shared_parser = argparse.ArgumentParser(add_help=False)
-    shared_parser.add_argument(
+    collector_map = {
+        "commits": collect_commits
+    }
+
+    destination_map = {
+        "commits": GITHUB_COMMITS_RAW_DIR_PATH
+    }
+
+    collector_func = collector_map[source]
+    data: List[dict] = collector_func(repositories=repos,
+                                      since=since,
+                                      until=until)
+    
+    write_result_to_disk(data, destination=destination_map[source], mode=WriteMode.APPEND)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
         "--repos",
         nargs="+",
         required=True,
         help="GitHub repositories (e.g., user/repo1 user/repo2 or a file containing them)",
     )
 
-    # Create subparsers for the subcommands
-    subparsers = parser.add_subparsers(
-        dest="command", help="Subcommands to run different functionalities"
+    parser.add_argument(
+        "--source",
+        "-s",
+        required=True,
+        choices=["commits"]
+    )
+    parser.add_argument(
+        "--since",
+        "-S",
+        type=lambda x: datetime.strptime(x, "%Y-%m-%d"),
+        default=datetime.now().date() - timedelta(days=3)
     )
 
-    # Subcommand for collecting commits
-    commit_parser = subparsers.add_parser(
-        "collect-commits",
-        parents=[shared_parser],
-        help="Collect commits from repositories",
-    )
-    commit_parser.add_argument(
-        "--starttime",
-        default=None,
-        help="Earliest point to get commit data from [YYYY-MM-DD]",
-    )
-    commit_parser.add_argument(
-        "--endtime",
-        default=None,
-        help="Last point to get commit data up to [YYYY-MM-DD]",
-    )
-
-    # Subcommand for collecting repositories
-    repo_parser = subparsers.add_parser(
-        "collect-repos",
-        parents=[shared_parser],
-        help="Collect repositories from a GitHub user",
+    parser.add_argument(
+        "--until",
+        "-U",
+        type=lambda x: datetime.strptime(x, "%Y-%m-%d"),
+        default=datetime.now()
     )
 
     args = parser.parse_args()
-
-    # Check if the first argument is a file
-    if len(args.repos) == 1 and os.path.isfile(args.repos[0]):
-        repos = read_repos_from_file(args.repos[0])
+    if len(args.repos) == 1 and os.path.exists(args.repos[0]):
+        with open(args.repos[0], "r") as repo_file:
+            repos = repo_file.readlines()
+            repos = list(map(str.strip, repos))
     else:
-        repos = []
-        for repo in args.repos:
-            owner, name = repo.split("/")
-            repository = Repository(owner=owner, name=name)
-            repos.append(repository)
+        repos = args.repos
 
-    # Determine which subcommand was used and call the corresponding function
-    if args.command == "collect-commits":
-        collect_commits(repos, args.starttime, args.endtime)
-    elif args.command == "collect-repos":
-        collect_repositories(repos)
-    else:
-        parser.print_help()
-
-
-if __name__ == "__main__":
-    main()
+    print(f"Collecting for {repos} ({args.since}-{args.until})")
+    main(source=args.source, repos=repos, since=args.since, until=args.until)

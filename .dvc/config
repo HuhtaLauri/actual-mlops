@@ -1,6 +1,5 @@
 [core]
-    remote = actual-mlops
     autostage = true
-['remote "actual-mlops"']
-    url = s3://actual-mlops/
+['remote "commits"']
+    url = s3://actual-mlops/commits/
     endpointurl = http://100.107.174.77/
