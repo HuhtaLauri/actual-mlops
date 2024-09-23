@@ -41,14 +41,13 @@ jobs:
 
       - name: Collect commits
         run: |
-          echo "testing" >> branch_test.txt
-          # make collect-commits
+          make collect-commits
 
-      # - name: DVC
-      #   run: |
-      #     dvc add src/engineering/github/data/raw/commits/
-      #     dvc push
-      #
+      - name: DVC
+        run: |
+          dvc add src/engineering/github/data/raw/commits/
+          dvc push
+
 
       - name: Push new branch
         env:
