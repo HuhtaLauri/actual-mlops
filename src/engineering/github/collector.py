@@ -1,18 +1,18 @@
 import requests
 from dotenv import load_dotenv
-import click
 from pathlib import Path
 import os
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List, Union
 from enum import Enum
 from datetime import datetime, timedelta
 from src.paths import (
-    GITHUB_RAW_DATA_DIR,
     GITHUB_COMMITS_RAW_DIR_PATH,
     GITHUB_REPOSITORIES_RAW_DIR_PATH,
 )
 import shutil
+import argparse
+from dataclasses import dataclass
 
 
 load_dotenv()
@@ -25,11 +25,10 @@ class WriteMode(Enum):
     APPEND = "a"
 
 
-@click.group()
-@click.pass_context
-def main(ctx):
-    ctx.ensure_object(dict)
-    os.makedirs(GITHUB_RAW_DATA_DIR, exist_ok=True)
+@dataclass
+class Repository:
+    owner: str
+    name: str
 
 
 def construct_api_url(endpoint: str, *args):
@@ -43,13 +42,13 @@ def get_api_data(url: str, params: dict = {}):
 
 
 def write_result_to_disk(
-    result: Dict[str, Any], destination: Path, mode: WriteMode = WriteMode.WRITE
+    result: Union[Dict[str, Any], List], destination: Path, mode: WriteMode
 ):
     os.makedirs(destination.parents[0], exist_ok=True)
     if isinstance(result, dict):
         _write_dict_data(result, destination, mode)
     else:
-        raise NotImplementedError
+        _write_list_data(result, destination, mode)
 
 
 def _write_dict_data(
@@ -60,55 +59,80 @@ def _write_dict_data(
         out_file.write("\n")
 
 
-@main.command
-@click.option("owner", "--owner", "-o", required=True)
-@click.option("repo", "--repository", "-r", required=True)
-def collect_repository(owner: str, repo: str):
-    resp = _collect_repository(owner, repo)
-    destination_file = Path(
-        os.path.join(GITHUB_REPOSITORIES_RAW_DIR_PATH, "repositories.json")
-    )
-    write_result_to_disk(resp, destination_file, mode=WriteMode.APPEND)
+def _write_list_data(
+    result: List, destination: Path, mode: WriteMode = WriteMode.APPEND
+):
+    from itertools import groupby
+    groups = []
+    keys = []
+
+    for k, g in groupby(result, lambda x: str(x["commit"]["committer"]["date"])[:10]):
+        groups.append(list(g))      # Store group iterator as a list
+        keys.append(k)
+
+    for k, g in zip(keys, groups):
+        out_dirpath = os.path.join(destination, k.replace("-", "/"))
+        out_filepath = os.path.join(out_dirpath, "data.json")
+        
+        os.makedirs(out_dirpath, exist_ok=True)
+        with open(out_filepath, "a") as out_file:
+            for row in g:
+                out_file.write(json.dumps(row))
+                out_file.write("\n")
 
 
-def _collect_repository(owner: str, repo: str) -> Dict[str, Any]:
-    url = construct_api_url("repos", owner, repo)
+def collect_repositories(repositories: List[Repository]):
+    shutil.rmtree(GITHUB_REPOSITORIES_RAW_DIR_PATH, ignore_errors=True)
+    os.makedirs(GITHUB_REPOSITORIES_RAW_DIR_PATH, exist_ok=True)
+    for repo in repositories:
+        data = _collect_repository_data(repo)
+        write_result_to_disk(
+            result=data,
+            destination=Path(
+                os.path.join(GITHUB_REPOSITORIES_RAW_DIR_PATH),
+                f"{repo.owner}-{repo.name}.json",
+            ),
+            mode=WriteMode.APPEND,
+        )
+
+
+def _collect_repository_data(repo: Repository):
+    url = construct_api_url("repos", repo.owner, repo.name)
     resp = get_api_data(url)
 
-    return resp.json()
+    if resp.status_code == 200:
+        return resp.json()
+    else:
+        raise ValueError("No repository data found")
 
 
-@main.command
-@click.pass_context
-@click.option("owner", "--owner", "-o", required=True)
-@click.option("repo", "--repository", "-r", required=True)
-@click.option("start_date", "--start-date", "-s")
-@click.option("end_date", "--end-date", "-e")
+
 def collect_commits(
-    ctx, owner: str, repo: str, start_date: str = "", end_date: str = ""
-):
-    if start_date:
-        start_date = datetime.strptime(start_date, "%Y-%m-%d")
-    else:
-        start_date = datetime.now().date() - timedelta(
-            days=3
-        )  # 100 for ease of dev. Will be 1
-
-    if end_date:
-        end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
-    else:
-        end_date = datetime.now().date() + timedelta(days=1)
-
-    _collect_commits(ctx, owner, repo, start_date, end_date)
-
-
-def _collect_commits(
-    ctx, owner: str, repo: str, start_date: datetime, end_date: datetime
+    repositories: List[Repository],
+    since: datetime,
+    until: datetime,
 ):
     shutil.rmtree(GITHUB_COMMITS_RAW_DIR_PATH, ignore_errors=True)
+    os.makedirs(GITHUB_COMMITS_RAW_DIR_PATH, exist_ok=True)
 
-    url = construct_api_url("repos", owner, repo, "commits")
-    params = {"since": str(start_date), "until": str(end_date)}
+    commits = []
+
+    params = {
+        "since": since,
+        "until": until
+    }
+
+    for repo in repositories:
+        commits = commits + _collect_commits_data(repo, params)
+
+    return commits
+
+    
+
+def _collect_commits_data(repo: Repository, params: Dict[str, datetime]) -> list:
+    url = construct_api_url("repos", repo.owner, repo.name, "commits")
+    resp = get_api_data(url)
+
     commits = []
 
     is_last = False
@@ -124,14 +148,77 @@ def _collect_commits(
         else:
             is_last = True
 
-    destination_file = Path(
-        os.path.join(GITHUB_RAW_DATA_DIR, "commits", "commits.json")
-    )
-    for commit in commits:
-        write_result_to_disk(
-            result=commit, destination=destination_file, mode=WriteMode.APPEND
-        )
+    return commits
+
+
+def read_repos_from_file(filepath: Path) -> List[Repository]:
+    repos: List[Repository] = []
+    with open(filepath, "r") as repos_file:
+        for repo in repos_file.readlines():
+            owner, name = repo.strip().split("/")
+            repository = Repository(owner=owner, name=name)
+            repos.append(repository)
+
+    return repos
+
+
+def main(source: str, repos: list, since: datetime, until: datetime):
+    print(repos)
+    repos = list(map(lambda repo: Repository(*repo.split('/')), repos))
+
+    collector_map = {
+        "commits": collect_commits
+    }
+
+    destination_map = {
+        "commits": GITHUB_COMMITS_RAW_DIR_PATH
+    }
+
+    collector_func = collector_map[source]
+    data: List[dict] = collector_func(repositories=repos,
+                                      since=since,
+                                      until=until)
+    
+    write_result_to_disk(data, destination=destination_map[source], mode=WriteMode.APPEND)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--repos",
+        nargs="+",
+        required=True,
+        help="GitHub repositories (e.g., user/repo1 user/repo2 or a file containing them)",
+    )
+
+    parser.add_argument(
+        "--source",
+        "-s",
+        required=True,
+        choices=["commits"]
+    )
+    parser.add_argument(
+        "--since",
+        "-S",
+        type=lambda x: datetime.strptime(x, "%Y-%m-%d"),
+        default=datetime.now().date() - timedelta(days=3)
+    )
+
+    parser.add_argument(
+        "--until",
+        "-U",
+        type=lambda x: datetime.strptime(x, "%Y-%m-%d"),
+        default=datetime.now()
+    )
+
+    args = parser.parse_args()
+    if len(args.repos) == 1 and os.path.exists(args.repos[0]):
+        with open(args.repos[0], "r") as repo_file:
+            repos = repo_file.readlines()
+            repos = list(map(str.strip, repos))
+    else:
+        repos = args.repos
+
+    print(f"Collecting for {repos} ({args.since}-{args.until})")
+    main(source=args.source, repos=repos, since=args.since, until=args.until)
