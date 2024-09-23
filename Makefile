@@ -33,3 +33,5 @@ run:
 run-it:
 	docker run -it $(AZURE_CONTAINER_REGISTRY)/$(DOCKER_NAME):$(DOCKER_TAG) bash
 
+collect-commits:
+	python -m src.engineering.github.collector -s commits --repos src/engineering/github/repositories.txt
