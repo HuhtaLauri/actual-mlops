@@ -1,0 +1,56 @@
+name: Commits pipeline
+
+on:
+
+  workflow_dispatch:
+
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+
+  pipeline:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Set branch name
+        run: |
+          echo "BRANCH_NAME=ETL/commits/$(date -I)" >> $GITHUB_ENV
+
+      - name: Create and checkout new branch
+        run: |
+          git checkout -b ${{ env.BRANCH_NAME }}
+
+      - name: Collect commits
+        run: |
+          echo "testing" >> branch_test.txt
+          # make collect-commits
+
+      # - name: DVC
+      #   run: |
+      #     dvc add src/engineering/github/data/raw/commits/
+      #     dvc push
+      #
+
+      - name: Push new branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GA_TOKEN }}
+        run: |
+          git add .
+          git commit -m "Commit pipeline ${{ env.BRANCH_NAME }}"
+          git push origin ${{ env.BRANCH_NAME }}
