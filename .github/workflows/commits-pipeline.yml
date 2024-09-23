@@ -46,7 +46,7 @@ jobs:
       - name: DVC
         run: |
           dvc add src/engineering/github/data/raw/commits/
-          dvc push
+          dvc push -r commits
 
       - name: Push new branch
         env:
