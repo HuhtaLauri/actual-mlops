@@ -62,10 +62,11 @@ jobs:
 
           for ((i=1; i<=num_days; i++)); do
             target_date=$(date -d "$current_date - $i day" +%Y/%m/%d)
-            echo "Running dvc add for: data/raw/$target_date"
+            echo "Running dvc add for: data/raw/$target_date/data.json"
             dvc add "src/engineering/github/data/raw/commits/$target_date"
           done
-
+          
+          dvc data status --granular
           dvc push -r commits
 
       - name: Push new branch
