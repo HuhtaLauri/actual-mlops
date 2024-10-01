@@ -198,6 +198,14 @@ if __name__ == "__main__":
         required=True,
         choices=["commits"]
     )
+
+    parser.add_argument(
+        "-n",
+        "--num-days",
+        type=int,
+        help="NUM-DAYS argument takes precedence to [SINCE] and [UNTIL]"
+    )
+
     parser.add_argument(
         "--since",
         "-S",
@@ -220,5 +228,13 @@ if __name__ == "__main__":
     else:
         repos = args.repos
 
-    print(f"Collecting for {repos} ({args.since}-{args.until})")
+    if args.num_days:
+        since = datetime.now().date() - timedelta(days=args.num_days)
+        until = datetime.now().date()
+    else:
+        since = args.since
+        until = args.until
+
+    print(f"Collecting for {repos} ({since}-{until})")
     main(source=args.source, repos=repos, since=args.since, until=args.until)
+
