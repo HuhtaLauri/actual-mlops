@@ -59,6 +59,8 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           tree src/engineering/github/data/raw/commits
+          dvc pull -r commits
+          echo "WE PULLED"
           num_days=${{ github.event.inputs.num_days != '' && github.event.inputs.num_days || 3 }}
 
           for ((i=1; i<=num_days; i++)); do
