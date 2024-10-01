@@ -59,14 +59,14 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           tree data/raw/commits
-          num_days=${{ github.event.inputs.num_days != '' && github.event.inputs.num_days || 3 }}
-
-          for ((i=1; i<=num_days; i++)); do
-            target_date=$(date -d "$current_date - $i day" +%Y/%m/%d)
-            echo "Running dvc add for: $target_date"
-            dvc add "data/raw/commits/$target_date/data.json"
-          done
-          
+          # num_days=${{ github.event.inputs.num_days != '' && github.event.inputs.num_days || 3 }}
+          #
+          # for ((i=1; i<=num_days; i++)); do
+          #   target_date=$(date -d "$current_date - $i day" +%Y/%m/%d)
+          #   echo "Running dvc add for: $target_date"
+          #   dvc add "data/raw/commits/$target_date/data.json"
+          # done
+          find data/raw/commits/ -name "*json" | xargs dvc add
           dvc data status --granular
           dvc push -r commits
 
