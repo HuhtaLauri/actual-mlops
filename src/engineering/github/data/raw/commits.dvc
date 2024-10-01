@@ -1,6 +1,0 @@
-outs:
-- md5: 73445d5d9f5e10d8bca9b13cad68e575.dir
-  size: 2508452
-  nfiles: 20
-  hash: md5
-  path: commits
