@@ -68,7 +68,7 @@ jobs:
           # done
           find data/raw/commits/ -name "*json" | xargs dvc add
           dvc data status --granular
-          dvc push -r commits
+          # dvc push -r commits
 
       - name: Push new branch
         env:
