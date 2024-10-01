@@ -46,17 +46,19 @@ jobs:
 
       - name: Collect commits
         run: |
+          num_days=${{ github.event.inputs.num_days != '' && github.event.inputs.num_days || 3 }}
+
           python -m src.engineering.github.collector \
           -s commits \
           --repos src/engineering/github/repositories.txt \
-          --num-days ${{ github.event.inputs.num_days:-3 }}
+          --num-days $num_days
 
       - name: DVC
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          num_days=${{ steps.set_num_days.outputs.num_days }}
+          num_days=${{ github.event.inputs.num_days != '' && github.event.inputs.num_days || 3 }}
 
           for ((i=1; i<=num_days; i++)); do
             target_date=$(date -d "$current_date - $i day" +%Y/%m/%d)
