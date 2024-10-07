@@ -38,7 +38,7 @@ jobs:
 
       - name: Validate
         run: |
-          python -m src.quality.commits.validate
+          python -m src.quality.commits validate
 
       - id: automerge
         name: automerge
