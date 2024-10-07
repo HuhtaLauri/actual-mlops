@@ -45,6 +45,8 @@ jobs:
           git checkout -b ${{ env.BRANCH_NAME }}
 
       - name: Collect commits
+        env:
+          GITHUB_TOKEN: ${{ secrets.GA_TOKEN }}
         run: |
           num_days=${{ github.event.inputs.num_days != '' && github.event.inputs.num_days || 3 }}
 
