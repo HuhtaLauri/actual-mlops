@@ -36,7 +36,9 @@ def construct_api_url(endpoint: str, *args):
 
 
 def get_api_data(url: str, params: dict = {}):
-    resp = requests.get(url, params=params)
+    bearer_token = f'Bearer {os.environ["GITHUB_TOKEN"]}'
+    headers = {"Authorization": bearer_token, "X-GitHub-Api-Version": "2022-11-28"}
+    resp = requests.get(url, params=params, headers=headers)
 
     return resp
 
@@ -63,17 +65,18 @@ def _write_list_data(
     result: List, destination: Path, mode: WriteMode = WriteMode.APPEND
 ):
     from itertools import groupby
+
     groups = []
     keys = []
 
     for k, g in groupby(result, lambda x: str(x["commit"]["committer"]["date"])[:10]):
-        groups.append(list(g))      # Store group iterator as a list
+        groups.append(list(g))  # Store group iterator as a list
         keys.append(k)
 
     for k, g in zip(keys, groups):
         out_dirpath = os.path.join(destination, k.replace("-", "/"))
         out_filepath = os.path.join(out_dirpath, "data.json")
-        
+
         os.makedirs(out_dirpath, exist_ok=True)
         with open(out_filepath, "a") as out_file:
             for row in g:
@@ -106,7 +109,6 @@ def _collect_repository_data(repo: Repository):
         raise ValueError("No repository data found")
 
 
-
 def collect_commits(
     repositories: List[Repository],
     since: datetime,
@@ -117,17 +119,13 @@ def collect_commits(
 
     commits = []
 
-    params = {
-        "since": since,
-        "until": until
-    }
+    params = {"since": since, "until": until}
 
     for repo in repositories:
         commits = commits + _collect_commits_data(repo, params)
 
     return commits
 
-    
 
 def _collect_commits_data(repo: Repository, params: Dict[str, datetime]) -> list:
     url = construct_api_url("repos", repo.owner, repo.name, "commits")
@@ -164,22 +162,18 @@ def read_repos_from_file(filepath: Path) -> List[Repository]:
 
 def main(source: str, repos: list, since: datetime, until: datetime):
     print(repos)
-    repos = list(map(lambda repo: Repository(*repo.split('/')), repos))
+    repos = list(map(lambda repo: Repository(*repo.split("/")), repos))
 
-    collector_map = {
-        "commits": collect_commits
-    }
+    collector_map = {"commits": collect_commits}
 
-    destination_map = {
-        "commits": GITHUB_COMMITS_RAW_DIR_PATH
-    }
+    destination_map = {"commits": GITHUB_COMMITS_RAW_DIR_PATH}
 
     collector_func = collector_map[source]
-    data: List[dict] = collector_func(repositories=repos,
-                                      since=since,
-                                      until=until)
-    
-    write_result_to_disk(data, destination=destination_map[source], mode=WriteMode.APPEND)
+    data: List[dict] = collector_func(repositories=repos, since=since, until=until)
+
+    write_result_to_disk(
+        data, destination=destination_map[source], mode=WriteMode.APPEND
+    )
 
 
 if __name__ == "__main__":
@@ -192,32 +186,27 @@ if __name__ == "__main__":
         help="GitHub repositories (e.g., user/repo1 user/repo2 or a file containing them)",
     )
 
-    parser.add_argument(
-        "--source",
-        "-s",
-        required=True,
-        choices=["commits"]
-    )
+    parser.add_argument("--source", "-s", required=True, choices=["commits"])
 
     parser.add_argument(
         "-n",
         "--num-days",
         type=int,
-        help="NUM-DAYS argument takes precedence to [SINCE] and [UNTIL]"
+        help="NUM-DAYS argument takes precedence to [SINCE] and [UNTIL]",
     )
 
     parser.add_argument(
         "--since",
         "-S",
         type=lambda x: datetime.strptime(x, "%Y-%m-%d"),
-        default=datetime.now().date() - timedelta(days=3)
+        default=datetime.now().date() - timedelta(days=3),
     )
 
     parser.add_argument(
         "--until",
         "-U",
         type=lambda x: datetime.strptime(x, "%Y-%m-%d"),
-        default=datetime.now()
+        default=datetime.now(),
     )
 
     args = parser.parse_args()
@@ -237,4 +226,3 @@ if __name__ == "__main__":
 
     print(f"Collecting for {repos} ({since}-{until})")
     main(source=args.source, repos=repos, since=args.since, until=args.until)
-
