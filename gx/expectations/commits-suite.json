@@ -1,0 +1,50 @@
+{
+  "expectations": [
+    {
+      "id": "fc8e7c45-12d9-4481-bc75-8028e05a8e72",
+      "kwargs": {
+        "column": "sha"
+      },
+      "meta": {},
+      "type": "expect_column_to_exist"
+    },
+    {
+      "id": "a7ff41f9-15e4-4336-9ce6-b18f2611cc5f",
+      "kwargs": {
+        "column": "parents"
+      },
+      "meta": {},
+      "type": "expect_column_to_exist"
+    },
+    {
+      "id": "a677d860-ae6c-4a46-9c61-60f973e372a9",
+      "kwargs": {
+        "column": "commit"
+      },
+      "meta": {},
+      "type": "expect_column_to_exist"
+    },
+    {
+      "id": "52fab956-ff9b-4d93-aa10-a72981e3cf3e",
+      "kwargs": {
+        "column": "committer"
+      },
+      "meta": {},
+      "type": "expect_column_to_exist"
+    },
+    {
+      "id": "d83198c0-3715-484c-b214-11cab84e7962",
+      "kwargs": {
+        "column": "author"
+      },
+      "meta": {},
+      "type": "expect_column_to_exist"
+    }
+  ],
+  "id": "a72e8757-b6f3-47b7-9517-501128acd807",
+  "meta": {
+    "great_expectations_version": "1.1.0"
+  },
+  "name": "commits-suite",
+  "notes": null
+}
