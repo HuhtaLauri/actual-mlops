@@ -45,3 +45,4 @@ jobs:
         uses: "pascalgn/automerge-action@v0.16.4"
         env:
           GITHUB_TOKEN: "${{ secrets.GA_TOKEN }}"
+          MERGE_DELETE_BRANCH: true
