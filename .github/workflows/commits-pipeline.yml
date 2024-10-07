@@ -49,6 +49,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GA_TOKEN }}
         run: |
           num_days=${{ github.event.inputs.num_days != '' && github.event.inputs.num_days || 3 }}
+          echo "Fetching for $num_days days"
 
           python -m src.engineering.github.collector \
           -s commits \
