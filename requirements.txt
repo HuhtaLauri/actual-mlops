@@ -2,3 +2,4 @@ python-dotenv==1.0.1
 requests==2.32.3
 dvc[azure]==3.55.1
 argparse==1.4.0
+great-expectations==1.1.0

@@ -1,0 +1,22 @@
+{
+  "data": {
+    "asset": {
+      "id": "8b0d9201-7bf1-4b69-ab58-108d11df52be",
+      "name": "commits-asset"
+    },
+    "batch_definition": {
+      "id": "9b99b0b9-8ded-4b89-9513-fe0b0c6aac20",
+      "name": "commits-daily-bd"
+    },
+    "datasource": {
+      "id": "e0391539-58d4-4223-9cb3-608b0e8252b4",
+      "name": "commits-fs-datasource"
+    }
+  },
+  "id": "11475655-24cb-4dd3-b557-b86d746eeb83",
+  "name": "commits-vd",
+  "suite": {
+    "id": "a72e8757-b6f3-47b7-9517-501128acd807",
+    "name": "commits-suite"
+  }
+}
