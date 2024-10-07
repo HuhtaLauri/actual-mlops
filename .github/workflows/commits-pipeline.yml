@@ -72,7 +72,7 @@ jobs:
           dvc push -r commits
 
       - name: Push new branch
-        if:  ${{ inputs.print_tags != true }}
+        if:  ${{ inputs.dry-run != true }}
         env:
           GITHUB_TOKEN: ${{ secrets.GA_TOKEN }}
         run: |
