@@ -136,7 +136,6 @@ def _collect_commits_data(repo: Repository, params: Dict[str, datetime]) -> list
     is_last = False
     while not is_last:
         resp = get_api_data(url, params)
-
         for commit in resp.json():
             commits.append(commit)
 
@@ -225,4 +224,4 @@ if __name__ == "__main__":
         until = args.until
 
     print(f"Collecting for {repos} ({since}-{until})")
-    main(source=args.source, repos=repos, since=args.since, until=args.until)
+    main(source=args.source, repos=repos, since=since, until=until)
