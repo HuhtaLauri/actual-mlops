@@ -14,7 +14,7 @@ jobs:
   pipeline:
 
     runs-on: self-hosted
-    if: startsWith(github.ref_head, 'ETL/commits/')
+    if: startsWith(github.head_ref, 'ETL/commits/')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
