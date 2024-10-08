@@ -1,5 +1,4 @@
-name: Commits pipeline
-run-name: Commits pipeline ${{ github.event_name }} ${{ github.actor }}
+name: Commits pipeline ${{ github.event_name }} ${{ github.actor }}
 
 on:
 
