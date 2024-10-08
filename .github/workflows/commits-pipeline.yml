@@ -1,4 +1,4 @@
-name: Commits pipeline
+name: Commits pipeline ${{ github.event_name }} ${{ github.actor }}
 
 on:
 
@@ -81,3 +81,14 @@ jobs:
           git add .
           git commit -m "Commit pipeline ${{ env.BRANCH_NAME }}"
           git push origin ${{ env.BRANCH_NAME }}
+
+      - name: Create pull request
+        if: ${{ inputs.dry-run != true }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GA_TOKEN }}
+        uses: peter-evans/create-pull-request@v7
+        with:
+          labels: automerge
+          delete-branch: true
+          branch: main
+

@@ -37,6 +37,12 @@ dvc add data/
 ### Set up cache
 ```sh
 sudo mkdir -p /home/shared/dvc-cache
+sudo chown -R myuser:ourgroup /home/shared/dvc-cache/
+```
+
+### Migrate existing cache
+```sh
+sudo mkdir -p /home/shared/dvc-cache
 mv .dvc/cache/* /home/shared/dvc-cache
 
 sudo find /home/shared/dvc-cache -type d -exec chmod 0775 {} \;
