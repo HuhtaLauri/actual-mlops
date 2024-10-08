@@ -86,9 +86,12 @@ jobs:
         if: ${{ inputs.dry-run != true }}
         env:
           GITHUB_TOKEN: ${{ secrets.GA_TOKEN }}
-        uses: peter-evans/create-pull-request@v7
-        with:
-          labels: automerge
-          delete-branch: true
-          branch: main
+        run: |
+          gh pr create \
+          -a "@me" \
+          -B main \
+          -H $(git branch --show-current) \
+          -l automerge \
+          -t "Commits pipeline $(date -I)" \
+          -b "Automated ETL pull request"
 
