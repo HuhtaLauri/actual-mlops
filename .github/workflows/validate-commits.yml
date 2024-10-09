@@ -38,7 +38,10 @@ jobs:
 
       - name: Validate
         run: |
-          python -m src.quality.commits validate
+          dvc diff --json HEAD HEAD~1 \
+            | jq -r '.added[].path, .modified[].path, .deleted[].path, .renamed[].path' \
+            | grep ".json$" \
+            | xargs python -m src.quality.commits validate-files --files
 
       - id: automerge
         name: automerge

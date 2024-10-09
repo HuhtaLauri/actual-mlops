@@ -3,7 +3,7 @@ import great_expectations.expectations as gxe
 from great_expectations.data_context.data_context import FileDataContext
 from great_expectations.checkpoint import Checkpoint
 from argparse import ArgumentParser
-from typing import Dict, Callable
+from typing import Dict, Callable, List
 import sys
 from src.paths import GITHUB_COMMITS_RAW_DIR_PATH
 from src.quality.utils import (
@@ -91,19 +91,50 @@ def validate(context: FileDataContext):
         raise ValidationError("All validations did not pass")
 
 
-def main(action: str):
-    action_map: Dict[str, Callable] = {"build": build, "validate": validate}
+def validate_files(context: FileDataContext, files: List[str]):
+    # Files returned by batch identifier are relative paths
+    # so we delete the beginning
+    files = list(
+        map(lambda x: x.replace(str(GITHUB_COMMITS_RAW_DIR_PATH) + "/", ""), files)
+    )
 
-    func = action_map[action]
+    checkpoint = context.checkpoints.get("commits-default-checkpoint")
 
-    context = gx.get_context(mode="file")
-    func(context=context)
+    batch_identifier_list = checkpoint.validation_definitions[
+        0
+    ].batch_definition.get_batch_identifiers_list()
+
+    results = []
+    for batch_identifier in batch_identifier_list:
+        if batch_identifier["path"] in files:
+            res = checkpoint.run(
+                batch_parameters={
+                    "year": batch_identifier["year"],
+                    "month": batch_identifier["month"],
+                    "day": batch_identifier["day"],
+                }
+            )
+            results.append(res.success)
+
+    batch_success = all(results)
+    if not batch_success:
+        raise ValidationError("All validations did not pass")
 
 
 if __name__ == "__main__":
+    action_map: Dict[str, Callable] = {
+        "build": build,
+        "validate": validate,
+        "validate-files": validate_files,
+    }
     parser = ArgumentParser()
 
     parser.add_argument("action")
+    parser.add_argument(
+        "--files",
+        "-f",
+        nargs="+",
+    )
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -111,4 +142,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(action=args.action)
+    context = gx.get_context(mode="file")
+
+    func = action_map[args.action]
+
+    if args.action == "validate-files":
+        if not args.files:
+            print("Error: --files argument is required for 'validate-files'.")
+            sys.exit(1)
+        func(context=context, files=args.files)
+    else:
+        func(context=context)
