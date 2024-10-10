@@ -37,7 +37,7 @@ dvc add data/
 ### Set up cache
 ```sh
 sudo mkdir -p /home/shared/dvc-cache
-sudo chown -R myuser:ourgroup /home/shared/dvc-cache/
+sudo chown -R $USER:$USER /home/shared/dvc-cache/
 ```
 
 ### Migrate existing cache
@@ -49,3 +49,9 @@ sudo find /home/shared/dvc-cache -type d -exec chmod 0775 {} \;
 sudo find /home/shared/dvc-cache -type f -exec chmod 0444 {} \;
 sudo chown -R myuser:ourgroup /home/shared/dvc-cache/
 ```
+
+### Github Actions runner set-up checklist
+- Install Github CLI
+- Open firewall for storages
+- Set up cache
+- Install jq
