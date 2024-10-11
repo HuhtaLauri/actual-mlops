@@ -38,7 +38,7 @@ jobs:
 
       - name: Validate
         run: |
-          dvc diff --json ${{github.base_ref}} ${{github.head_ref}} \
+          dvc diff --json ${{github.base_ref}} ${{github.ref}} \
             | jq -r '.added[].path, .modified[].path, .deleted[].path, .renamed[].path' \
             | grep ".json$" \
             | xargs python -m src.quality.commits validate-files --files
