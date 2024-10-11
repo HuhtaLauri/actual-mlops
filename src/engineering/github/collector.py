@@ -13,6 +13,7 @@ from src.paths import (
 import shutil
 import argparse
 from dataclasses import dataclass
+import concurrent.futures
 
 
 load_dotenv()
@@ -110,19 +111,15 @@ def _collect_repository_data(repo: Repository):
 
 
 def collect_commits(
-    repositories: List[Repository],
+    repository: Repository,
     since: datetime,
     until: datetime,
 ):
-    shutil.rmtree(GITHUB_COMMITS_RAW_DIR_PATH, ignore_errors=True)
-    os.makedirs(GITHUB_COMMITS_RAW_DIR_PATH, exist_ok=True)
-
     commits = []
 
     params = {"since": since, "until": until}
 
-    for repo in repositories:
-        commits = commits + _collect_commits_data(repo, params)
+    commits = commits + _collect_commits_data(repository, params)
 
     return commits
 
@@ -167,8 +164,21 @@ def main(source: str, repos: list, since: datetime, until: datetime):
 
     destination_map = {"commits": GITHUB_COMMITS_RAW_DIR_PATH}
 
+    shutil.rmtree(destination_map[source], ignore_errors=True)
+    os.makedirs(destination_map[source], exist_ok=True)
+
     collector_func = collector_map[source]
-    data: List[dict] = collector_func(repositories=repos, since=since, until=until)
+
+    # Setting arguments here
+    def collect_for_repo(repo):
+        return collector_func(repo, since=since, until=until)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(repos)) as executor:
+        futures = [executor.submit(collect_for_repo, repo) for repo in repos]
+
+        data: List[dict] = []
+        for future in concurrent.futures.as_completed(futures):
+            data.extend(future.result())
 
     write_result_to_disk(
         data, destination=destination_map[source], mode=WriteMode.APPEND
