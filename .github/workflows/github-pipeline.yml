@@ -26,7 +26,7 @@ jobs:
 
   commits-pipeline:
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted-azure
 
     steps:
       - name: Checkout repository
@@ -61,7 +61,7 @@ jobs:
           python -m src.engineering.github.collector \
           -s commits \
           --repos src/engineering/github/repositories.txt \
-          --num-days 3
+          --num-days $num_days
 
       - name: DVC
         env:
@@ -98,7 +98,7 @@ jobs:
 
   repos-pipeline:
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted-azure
 
     steps:
       - name: Checkout repository
