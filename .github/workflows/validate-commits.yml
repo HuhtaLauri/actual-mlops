@@ -40,7 +40,7 @@ jobs:
         run: |
           dvc diff --json ${{github.base_ref}} HEAD \
             | jq -r '.added[].path, .modified[].path, .deleted[].path, .renamed[].path' \
-            | grep ".json$" \
+            | grep -E "^data/raw/commits/.*\.json$" \
             | xargs python -m src.quality.commits validate-files --files
 
       - id: automerge

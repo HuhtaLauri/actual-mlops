@@ -1,5 +1,10 @@
  # DVC
 
+Currently tracking dvc remotes per data source (commits, repos)
+Possibly using raw, staging, prod in the future
+ -> Not using data source specific remotes can get tricky with data validation
+
+
 ## Setup
 
 ```sh
@@ -55,3 +60,4 @@ sudo chown -R myuser:ourgroup /home/shared/dvc-cache/
 - Open firewall for storages
 - Set up cache
 - Install jq
+
