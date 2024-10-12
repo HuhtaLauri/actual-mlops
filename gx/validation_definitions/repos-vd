@@ -1,0 +1,22 @@
+{
+  "data": {
+    "asset": {
+      "id": "6654d0f8-7cff-41a0-a770-2065805381ff",
+      "name": "repos-asset"
+    },
+    "batch_definition": {
+      "id": "12f51479-ca1e-4d00-96ba-d3fa54417113",
+      "name": "repos-daily-bd"
+    },
+    "datasource": {
+      "id": "79b654de-a237-4163-8efb-01585559d7da",
+      "name": "repos-fs-datasource"
+    }
+  },
+  "id": "86aab76a-79a4-4ec9-b694-dbc4e597363b",
+  "name": "repos-vd",
+  "suite": {
+    "id": "2e43e1ab-5c0a-439c-b060-1b17be3ca89a",
+    "name": "repos-suite"
+  }
+}

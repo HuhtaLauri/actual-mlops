@@ -102,4 +102,19 @@ fluent_datasources:
                 - day
         lines: true
     base_directory: data/raw/commits
+  repos-fs-datasource:
+    type: pandas_filesystem
+    id: 79b654de-a237-4163-8efb-01585559d7da
+    assets:
+      repos-asset:
+        type: json
+        id: 6654d0f8-7cff-41a0-a770-2065805381ff
+        batch_definitions:
+          repos-daily-bd:
+            id: 12f51479-ca1e-4d00-96ba-d3fa54417113
+            partitioner:
+              regex: data.json
+              sort_ascending: true
+        lines: true
+    base_directory: data/raw/repositories
 data_context_id: cb308370-eced-43fb-817c-e09676fdf5c6
