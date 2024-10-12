@@ -145,7 +145,7 @@ jobs:
           dvc push -r repos
 
       - name: Push new branch
-        if:  ${{ inputs.dry-run != true }}
+        if:  ${{ inputs.dry-run != true }} && ${{ git diff | wc -l != 0}}
         env:
           GITHUB_TOKEN: ${{ secrets.GA_TOKEN }}
         run: |
