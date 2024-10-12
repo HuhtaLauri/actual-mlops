@@ -63,6 +63,9 @@ jobs:
           --repos src/engineering/github/repositories.txt \
           --num-days $num_days
 
+          echo "CHANGED_LINES=$(git diff | wc -l)" >> $GITHUB_ENV
+
+
       - name: DVC
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -72,8 +75,8 @@ jobs:
           find data/raw/commits/ -name "*json" | xargs dvc add
           dvc push -r commits
 
-      - name: Push new branch
-        if:  ${{ inputs.dry-run != true && git status --porcelain}}
+      - name: Push and PR
+        if:  ${{ inputs.dry-run != true && env.CHANGED_LINES != 0}}
         env:
           GITHUB_TOKEN: ${{ secrets.GA_TOKEN }}
         run: |
@@ -83,11 +86,6 @@ jobs:
           git commit -m "Commit pipeline ${{ env.BRANCH_NAME }}"
           git push origin ${{ env.BRANCH_NAME }}
 
-      - name: Create pull request
-        if: ${{ inputs.dry-run != true }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GA_TOKEN }}
-        run: |
           gh pr create \
           -a "@me" \
           -B main \
@@ -135,6 +133,8 @@ jobs:
           --repos src/engineering/github/repositories.txt \
           --num-days $num_days
 
+          echo "CHANGED_LINES=$(git diff | wc -l)" >> $GITHUB_ENV
+
       - name: DVC
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -144,22 +144,17 @@ jobs:
           find data/raw/repositories/ -name "*json" | xargs dvc add
           dvc push -r repos
 
-      - name: Push new branch
-        if:  ${{ inputs.dry-run != true }}
+      - name: Push and PR
+        if:  ${{ inputs.dry-run != true && env.CHANGED_LINES != 0}}
         env:
           GITHUB_TOKEN: ${{ secrets.GA_TOKEN }}
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add .
-          git commit -m "Commit pipeline ${{ env.BRANCH_NAME }}"
+          git commit -m "Repos pipeline ${{ env.BRANCH_NAME }}"
           git push origin ${{ env.BRANCH_NAME }}
 
-      - name: Create pull request
-        if:  ${{ inputs.dry-run != true }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GA_TOKEN }}
-        run: |
           gh pr create \
           -a "@me" \
           -B main \
