@@ -45,26 +45,23 @@ def get_api_data(url: str, params: dict = {}):
 
 
 def write_result_to_disk(
-    result: Union[Dict[str, Any], List], destination: Path, mode: WriteMode
+    source: str, result: Union[Dict[str, Any], List], destination: Path
 ):
     os.makedirs(destination.parents[0], exist_ok=True)
-    if isinstance(result, dict):
-        _write_dict_data(result, destination, mode)
+    if source == "repos":
+        _write_dict_data(result, destination)
     else:
-        _write_list_data(result, destination, mode)
+        _write_list_data(result, destination)
 
 
-def _write_dict_data(
-    result: Dict[str, Any], destination: Path, mode: WriteMode = WriteMode.WRITE
-):
-    with open(destination, str(mode.value)) as out_file:
-        out_file.write(json.dumps(result))
-        out_file.write("\n")
+def _write_dict_data(result: Dict[str, Any], destination: Path):
+    with open(os.path.join(destination, "data.json"), "a") as out_file:
+        for row in result:
+            out_file.write(json.dumps(row))
+            out_file.write("\n")
 
 
-def _write_list_data(
-    result: List, destination: Path, mode: WriteMode = WriteMode.APPEND
-):
+def _write_list_data(result: List, destination: Path):
     from itertools import groupby
 
     groups = []
@@ -85,29 +82,16 @@ def _write_list_data(
                 out_file.write("\n")
 
 
-def collect_repositories(repositories: List[Repository]):
-    shutil.rmtree(GITHUB_REPOSITORIES_RAW_DIR_PATH, ignore_errors=True)
-    os.makedirs(GITHUB_REPOSITORIES_RAW_DIR_PATH, exist_ok=True)
-    for repo in repositories:
-        data = _collect_repository_data(repo)
-        write_result_to_disk(
-            result=data,
-            destination=Path(
-                os.path.join(GITHUB_REPOSITORIES_RAW_DIR_PATH),
-                f"{repo.owner}-{repo.name}.json",
-            ),
-            mode=WriteMode.APPEND,
-        )
+def collect_repositories(
+    repository: Repository,
+    since: datetime,
+    until: datetime,
+):
+    params = {"since": since, "until": until}
+    url = construct_api_url("repos", repository.owner, repository.name)
 
-
-def _collect_repository_data(repo: Repository):
-    url = construct_api_url("repos", repo.owner, repo.name)
-    resp = get_api_data(url)
-
-    if resp.status_code == 200:
-        return resp.json()
-    else:
-        raise ValueError("No repository data found")
+    repos = collect_and_paginate(url=url)
+    return repos
 
 
 def collect_commits(
@@ -115,26 +99,27 @@ def collect_commits(
     since: datetime,
     until: datetime,
 ):
-    commits = []
-
     params = {"since": since, "until": until}
+    url = construct_api_url("repos", repository.owner, repository.name, "commits")
 
-    commits = commits + _collect_commits_data(repository, params)
+    commits = collect_and_paginate(url=url, params=params)
 
     return commits
 
 
-def _collect_commits_data(repo: Repository, params: Dict[str, datetime]) -> list:
-    url = construct_api_url("repos", repo.owner, repo.name, "commits")
-    resp = get_api_data(url)
-
-    commits = []
+def collect_and_paginate(url: str, params: dict = {}):
+    data = []
 
     is_last = False
+    resp = get_api_data(url)
     while not is_last:
         resp = get_api_data(url, params)
-        for commit in resp.json():
-            commits.append(commit)
+        resp_data = resp.json()
+        if isinstance(resp_data, list):
+            for row in resp_data:
+                data.append(row)
+        else:
+            data = resp_data
 
         # Pagination
         if resp.links.get("next", None):
@@ -142,7 +127,7 @@ def _collect_commits_data(repo: Repository, params: Dict[str, datetime]) -> list
         else:
             is_last = True
 
-    return commits
+    return data
 
 
 def read_repos_from_file(filepath: Path) -> List[Repository]:
@@ -160,9 +145,12 @@ def main(source: str, repos: list, since: datetime, until: datetime):
     print(repos)
     repos = list(map(lambda repo: Repository(*repo.split("/")), repos))
 
-    collector_map = {"commits": collect_commits}
+    collector_map = {"commits": collect_commits, "repos": collect_repositories}
 
-    destination_map = {"commits": GITHUB_COMMITS_RAW_DIR_PATH}
+    destination_map = {
+        "commits": GITHUB_COMMITS_RAW_DIR_PATH,
+        "repos": GITHUB_REPOSITORIES_RAW_DIR_PATH,
+    }
 
     shutil.rmtree(destination_map[source], ignore_errors=True)
     os.makedirs(destination_map[source], exist_ok=True)
@@ -176,13 +164,14 @@ def main(source: str, repos: list, since: datetime, until: datetime):
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(repos)) as executor:
         futures = [executor.submit(collect_for_repo, repo) for repo in repos]
 
-        data: List[dict] = []
+        data = []
         for future in concurrent.futures.as_completed(futures):
-            data.extend(future.result())
+            if source == "repos":
+                data.append(future.result())
+            else:
+                data.extend(future.result())
 
-    write_result_to_disk(
-        data, destination=destination_map[source], mode=WriteMode.APPEND
-    )
+    write_result_to_disk(source, data, destination=destination_map[source])
 
 
 if __name__ == "__main__":
@@ -195,7 +184,7 @@ if __name__ == "__main__":
         help="GitHub repositories (e.g., user/repo1 user/repo2 or a file containing them)",
     )
 
-    parser.add_argument("--source", "-s", required=True, choices=["commits"])
+    parser.add_argument("--source", "-s", required=True, choices=["commits", "repos"])
 
     parser.add_argument(
         "-n",

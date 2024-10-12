@@ -2,10 +2,6 @@
 name: Github Collector CI
 
 on:
-  push:
-    branches:
-      - dev
-      - 'FEAT/*'
   pull_request:
     branches:
       - main
@@ -17,6 +13,7 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    if: !startsWith(github.head_ref, 'ETL/**')
 
     steps:
     - uses: actions/checkout@v4
