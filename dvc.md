@@ -60,4 +60,5 @@ sudo chown -R myuser:ourgroup /home/shared/dvc-cache/
 - Open firewall for storages
 - Set up cache
 - Install jq
+- Install Tailscale
 

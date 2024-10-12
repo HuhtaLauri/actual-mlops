@@ -6,8 +6,8 @@
     type = symlink
 ['remote "commits"']
     url = s3://actual-mlops/commits/
-    endpointurl = http://65.109.133.210/
+    endpointurl = http://100.107.174.77/
 ['remote "repos"']
     url = s3://actual-mlops/repos/
-    endpointurl = http://65.109.133.210/
+    endpointurl = http://100.107.174.77/
 
