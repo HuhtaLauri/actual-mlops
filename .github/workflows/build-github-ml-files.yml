@@ -1,8 +1,9 @@
-name: Github Training Files Builder
+name: Githu Training Files Builder
 
 on:
 
   workflow_dispatch:
+    inputs:
       dry-run:
         description: "Dry run does not commit. Default: [false]"
         required: false
