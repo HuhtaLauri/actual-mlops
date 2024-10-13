@@ -63,9 +63,6 @@ jobs:
           --repos src/engineering/github/repositories.txt \
           --num-days $num_days
 
-          echo "CHANGED_LINES=$(git diff | wc -l)" >> $GITHUB_ENV
-
-
       - name: DVC
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -74,6 +71,8 @@ jobs:
           dvc fetch -r commits
           find data/raw/commits/ -name "*json" | xargs dvc add
           dvc push -r commits
+
+          echo "CHANGED_LINES=$(git diff | wc -l)" >> $GITHUB_ENV
 
       - name: Push and PR
         if:  ${{ inputs.dry-run != true && env.CHANGED_LINES != 0}}
