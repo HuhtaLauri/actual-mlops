@@ -2,9 +2,9 @@ from argparse import ArgumentParser
 from dotenv import load_dotenv
 from pathlib import Path
 from src.db_utils import cursor
+from src.utils import Directory
 import sys
 import os
-from typing import List
 from psycopg.sql import SQL
 import time
 from loguru import logger
@@ -12,19 +12,6 @@ from loguru import logger
 load_dotenv()
 
 CONNECTION_STRING = os.environ["DATABASE_CONNECTION_STRING"]
-
-
-class Directory:
-    def __init__(self, path: str):
-        self.path: Path = Path(path)
-        self.files: List[Path] = []
-
-    def collect(self, suffix: str):
-        for root, _, files in os.walk(self.path):
-            for file in files:
-                if file.endswith(suffix):
-                    self.files.append(Path(os.path.join(root, file)))
-        return self.files
 
 
 def read_file_to_sql(filepath: Path) -> SQL:

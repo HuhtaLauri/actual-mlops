@@ -1,0 +1,79 @@
+name: Github Training Files Builder
+
+on:
+
+  workflow_dispatch:
+      dry-run:
+        description: "Dry run does not commit. Default: [false]"
+        required: false
+        type: boolean
+        default: false
+
+  schedule:
+    - cron: '0 5 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+
+  github-ml-files:
+
+    runs-on: self-hosted-azure
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Set branch name
+        run: |
+          echo "BRANCH_NAME=ML/file-build/$(date -I)" >> $GITHUB_ENV
+
+      - name: Create and checkout new branch
+        run: |
+          git checkout -b ${{ env.BRANCH_NAME }}
+
+      - name: Build commits training files
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          dvc pull -r commits
+
+          python -m src.engineering.github.dataops train-test \
+            -d data/raw/commits \
+            -s json \
+            -td data/ml/commits
+
+          dvc add data/raw/commits
+          dvc data status --granular
+          dvc push -r commits
+
+      - name: Push and PR
+        if:  ${{ inputs.dry-run != true }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GA_TOKEN }}
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "ML file builds ${{ env.BRANCH_NAME }}"
+          git push origin ${{ env.BRANCH_NAME }}
+
+          gh pr create \
+          -a "@me" \
+          -B main \
+          -H $(git branch --show-current) \
+          -l automerge \
+          -t "ML files built $(date -I)" \
+          -b "Automated ML pull request"
