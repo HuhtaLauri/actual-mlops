@@ -1,13 +1,16 @@
-from git import Repo
+from pathlib import Path
+import os
+from typing import List
 
 
-def get_git_branch():
-    try:
-        repo = Repo(search_parent_directories=True)
-        branch = repo.active_branch.name
-        return branch
-    except Exception:
-        raise ValueError("Must be run in a git initialized directory")
+class Directory:
+    def __init__(self, path: str):
+        self.path: Path = Path(path)
+        self.files: List[Path] = []
 
-
-CURRENT_BRANCH = get_git_branch()
+    def collect(self, suffix: str):
+        for root, _, files in os.walk(self.path):
+            for file in files:
+                if file.endswith(suffix):
+                    self.files.append(Path(os.path.join(root, file)))
+        return self.files
