@@ -6,6 +6,7 @@ from loguru import logger
 from src.utils import Directory
 from sklearn.model_selection import train_test_split
 import os
+import shutil
 
 
 def build_split_from_directory(
@@ -34,6 +35,7 @@ def build_split_from_directory(
     if target and target in test.columns:
         test = test.drop(target, axis=1)
 
+    shutil.rmtree(target_directory.path, ignore_errors=True)
     os.makedirs(target_directory.path, exist_ok=True)
 
     train.to_csv(os.path.join(target_directory.path, "train.csv"), index=False)
