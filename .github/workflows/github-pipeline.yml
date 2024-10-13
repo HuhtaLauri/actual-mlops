@@ -62,6 +62,8 @@ jobs:
           -s commits \
           --repos src/engineering/github/repositories.txt \
           --num-days $num_days
+          
+          echo $(git diff | wc -l)
 
       - name: DVC
         env:
@@ -72,7 +74,8 @@ jobs:
           find data/raw/commits/ -name "*json" | xargs dvc add
           dvc push -r commits
 
-          echo "CHANGED_LINES=$(git diff | wc -l)" >> $GITHUB_ENV
+          echo $(git status --porcelain | wc -l)
+          echo "CHANGED_LINES=$(git status --porcelain | wc -l)" >> $GITHUB_ENV
 
       - name: Push and PR
         if:  ${{ inputs.dry-run != true && env.CHANGED_LINES != 0}}
