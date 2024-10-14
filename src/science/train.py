@@ -4,82 +4,95 @@ import os
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from io import StringIO
-import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import HistGradientBoostingRegressor
 
 from dotenv import load_dotenv
-from pathlib import Path
+
+from src.utils import Directory, file_list_to_df
+from sqlalchemy import create_engine
+from loguru import logger
+
+load_dotenv()
 
 
-load_dotenv(dotenv_path)
-
-
-def predict_fn(input_data, model):
-    prediction = model.predict(input_data)
-    pred_prob = model.predict_proba(input_data)
-    return np.array([prediction, pred_prob])
-
-
-# inference functions ---------------
 def model_fn(model_dir):
     clf = joblib.load(os.path.join(model_dir, "model.joblib"))
     return clf
 
 
-def input_fn(request_body, request_content_type):
-    raise NotImplementedError
+def prepare(df: pd.DataFrame) -> pd.DataFrame:
+    df["commit_date"] = df["commit.committer.date"].apply(
+        lambda x: pd.to_datetime(x[:10])
+    )
+    df = df.groupby("commit_date").size().reset_index(name="commit_count")
+
+    df["dow"] = df["commit_date"].apply(lambda x: x.weekday())
+    df["commit_count_lag1"] = df["commit_count"].shift(1)
+    df["commit_count_lag2"] = df["commit_count"].shift(2)
+    df["commit_count_lag7"] = df["commit_count"].shift(7)
+    df["commit_count_lag30"] = df["commit_count"].shift(30)
+
+    df["commit_epoch"] = df["commit_date"].apply(lambda x: x.timestamp())
+    df = df.sort_values("commit_date")
+
+    return df
+
+
+def build_result_df(predictions: pd.Series, test_x: pd.DataFrame, test_y: pd.Series):
+    test_x["value"] = test_y
+    test_x["prediction"] = predictions
+    test_x["diff"] = test_x["value"] - test_x["prediction"]
+
+    return test_x
+
+
+def load_result_to_db(df, name: str):
+    df["date"] = pd.to_datetime(df["commit_epoch"], unit="s")
+    df = df.drop("commit_epoch", axis=1)
+
+    engine = create_engine(os.environ["DATABASE_CONNECTION_STRING"])
+    df.to_sql(name, con=engine, if_exists="replace", index=False)
 
 
 if __name__ == "__main__":
-    print("extracting arguments")
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--n-estimators", type=int, default=10)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
 
     # Data, model, and output directories
-    parser.add_argument("--model-dir", type=str, default=os.environ.get("SM_MODEL_DIR"))
-    parser.add_argument(
-        "--train-dir", type=str, default=os.environ.get("SM_CHANNEL_TRAIN")
-    )
-    parser.add_argument(
-        "--test-dir", type=str, default=os.environ.get("SM_CHANNEL_TEST")
-    )
-    parser.add_argument("--train-file", type=str, default="train.csv")
-    parser.add_argument("--test-file", type=str, default="test.csv")
+    parser.add_argument("--model-dir", type=str, default="models")
+    parser.add_argument("--data-dir", "-d", type=lambda x: Directory(x))
 
-    args, _ = parser.parse_known_args()
+    args = parser.parse_args()
 
-    print("reading data")
-    train_df = pd.read_csv(os.path.join(args.train_dir, args.train_file))
-    test_df = pd.read_csv(os.path.join(args.test_dir, args.test_file))
+    df = file_list_to_df(args.data_dir.collect(suffix="json"))
+    if df.empty:
+        raise ValueError("No dataframe or dataframe is empty")
 
-    print("building training and testing datasets")
-    X_train = pd.get_dummies(train_df[args.features.split()])
-    y_train = train_df[args.target]
-    X_test = pd.get_dummies(test_df[args.features.split()])
-    y_test = test_df[args.target]
-    print(X_train.head())
+    df = prepare(df)
+    X = df[["commit_epoch", "commit_count_lag1", "commit_count_lag2", "dow"]]
+    y = df["commit_count"]
 
-    # train
-    print("training model")
-    model = RandomForestClassifier(
-        n_estimators=args.n_estimators, max_depth=5, random_state=1
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.1, random_state=42, shuffle=False
     )
 
-    model.fit(X_train.values, y_train)
+    model = HistGradientBoostingRegressor(max_iter=5000, learning_rate=0.125)
+    model.fit(X_train, y_train)
 
-    # print abs error
-    print("validating model")
-    abs_err = np.abs(model.predict(X_test) - y_test)
+    preds = model.predict(X_test)
 
-    # print couple perf metrics
+    abs_err = np.abs(preds - y_test)
     for q in [10, 50, 90]:
-        print(
+        logger.info(
             "AE-at-" + str(q) + "th-percentile: " + str(np.percentile(a=abs_err, q=q))
         )
 
+    test_result_df = build_result_df(preds, X_test, y_test)
+    load_result_to_db(test_result_df, "prediction")
+
     # persist model
-    path = os.path.join(args.model_dir, "model.joblib")
+    path = os.path.join(args.model_dir, "daily-commits.joblib")
     joblib.dump(model, path)
-    print("model persisted at " + path)
+    logger.info("model persisted at " + path)

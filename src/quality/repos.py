@@ -39,9 +39,7 @@ def build(context: FileDataContext):
 
     validation_definition = add_or_update_validation_definition(
         context=context,
-        vd=gx.ValidationDefinition(
-            name="repos-vd", data=batch_definition, suite=suite
-        ),
+        vd=gx.ValidationDefinition(name="repos-vd", data=batch_definition, suite=suite),
     )
 
     action_list = [

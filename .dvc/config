@@ -10,4 +10,7 @@
 ['remote "repos"']
     url = s3://actual-mlops/repos/
     endpointurl = http://100.107.174.77/
+['remote "models"']
+    url = s3://actual-mlops/models/
+    endpointurl = http://100.107.174.77/
 
