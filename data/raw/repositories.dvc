@@ -1,6 +1,5 @@
 outs:
-- md5: 53232c147edcb71c6926ace37647bf1f.dir
-  size: 12430
+- md5: 50ee4c915c73a507adcd9a3a710bc2bd.dir
   nfiles: 1
   hash: md5
   path: repositories
