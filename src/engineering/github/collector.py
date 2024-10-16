@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from src.paths import (
     GITHUB_COMMITS_RAW_DIR_PATH,
     GITHUB_REPOSITORIES_RAW_DIR_PATH,
+    GITHUB_ISSUES_RAW_DIR_PATH
 )
 import shutil
 import argparse
@@ -45,13 +46,13 @@ def get_api_data(url: str, params: dict = {}):
 
 
 def write_result_to_disk(
-    source: str, result: Union[Dict[str, Any], List], destination: Path
+    source: str, result: Union[Dict[str, Any], List], destination: Path, partition_column_path: str
 ):
     os.makedirs(destination.parents[0], exist_ok=True)
     if source == "repos":
         _write_dict_data(result, destination)
     else:
-        _write_list_data(result, destination)
+        _write_list_data(result, destination, partition_column_path=partition_column_path)
 
 
 def _write_dict_data(result: Dict[str, Any], destination: Path):
@@ -61,13 +62,13 @@ def _write_dict_data(result: Dict[str, Any], destination: Path):
             out_file.write("\n")
 
 
-def _write_list_data(result: List, destination: Path):
+def _write_list_data(result: List, destination: Path, partition_column_path: str):
     from itertools import groupby
 
     groups = []
     keys = []
 
-    for k, g in groupby(result, lambda x: str(x["commit"]["committer"]["date"])[:10]):
+    for k, g in groupby(result, lambda x: str(get_nested_value(x, partition_column_path))[:10]):
         groups.append(list(g))  # Store group iterator as a list
         keys.append(k)
 
@@ -81,6 +82,16 @@ def _write_list_data(result: List, destination: Path):
                 out_file.write(json.dumps(row))
                 out_file.write("\n")
 
+
+def get_nested_value(data, path):
+    keys = path.split('.')
+    value = data
+    try:
+        for key in keys:
+            value = value[key]
+        return value
+    except KeyError:
+        return None
 
 def collect_repositories(
     repository: Repository,
@@ -106,6 +117,17 @@ def collect_commits(
 
     return commits
 
+def collect_issues(
+    repository: Repository,
+    since: datetime,
+    until: datetime,
+):
+    params = {"since": since, "until": until}
+    url = construct_api_url("repos", repository.owner, repository.name, "issues")
+
+    issues = collect_and_paginate(url=url, params=params)
+
+    return issues
 
 def collect_and_paginate(url: str, params: dict = {}):
     data = []
@@ -145,12 +167,19 @@ def main(source: str, repos: list, since: datetime, until: datetime):
     print(repos)
     repos = list(map(lambda repo: Repository(*repo.split("/")), repos))
 
-    collector_map = {"commits": collect_commits, "repos": collect_repositories}
+    collector_map = {"commits": collect_commits, "repos": collect_repositories,
+                     "issues": collect_issues}
 
     destination_map = {
         "commits": GITHUB_COMMITS_RAW_DIR_PATH,
         "repos": GITHUB_REPOSITORIES_RAW_DIR_PATH,
+        "issues": GITHUB_ISSUES_RAW_DIR_PATH,
     }
+
+    if source in ["commits"]:
+        partition_column_path = "commit.committer.date"
+    else:
+        partition_column_path = "updated_at"
 
     shutil.rmtree(destination_map[source], ignore_errors=True)
     os.makedirs(destination_map[source], exist_ok=True)
@@ -171,7 +200,7 @@ def main(source: str, repos: list, since: datetime, until: datetime):
             else:
                 data.extend(future.result())
 
-    write_result_to_disk(source, data, destination=destination_map[source])
+    write_result_to_disk(source, data, destination=destination_map[source], partition_column_path=partition_column_path)
 
 
 if __name__ == "__main__":
@@ -184,7 +213,7 @@ if __name__ == "__main__":
         help="GitHub repositories (e.g., user/repo1 user/repo2 or a file containing them)",
     )
 
-    parser.add_argument("--source", "-s", required=True, choices=["commits", "repos"])
+    parser.add_argument("--source", "-s", required=True, choices=["commits", "repos", "issues"])
 
     parser.add_argument(
         "-n",
