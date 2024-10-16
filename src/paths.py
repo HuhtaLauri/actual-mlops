@@ -10,9 +10,7 @@ GITHUB_COMMITS_RAW_DIR_PATH = Path(os.path.join(GITHUB_RAW_DATA_DIR, "commits"))
 GITHUB_REPOSITORIES_RAW_DIR_PATH = Path(
     os.path.join(GITHUB_RAW_DATA_DIR, "repositories")
 )
-GITHUB_ISSUES_RAW_DIR_PATH = Path(
-    os.path.join(GITHUB_RAW_DATA_DIR, "issues")
-)
+GITHUB_ISSUES_RAW_DIR_PATH = Path(os.path.join(GITHUB_RAW_DATA_DIR, "issues"))
 
 # ML
 GITHUB_ML_DATA_DIR = Path(os.path.join(DATA_ROOT, "ml"))

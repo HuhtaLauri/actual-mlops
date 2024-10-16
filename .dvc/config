@@ -4,13 +4,7 @@
     dir = /home/shared/dvc-cache/
     shared = group
     type = symlink
-['remote "commits"']
-    url = s3://actual-mlops/commits/
-    endpointurl = http://100.107.174.77/
-['remote "repos"']
-    url = s3://actual-mlops/repos/
-    endpointurl = http://100.107.174.77/
-['remote "models"']
-    url = s3://actual-mlops/models/
+['remote "raw"']
+    url = s3://actual-mlops/raw/
     endpointurl = http://100.107.174.77/
 

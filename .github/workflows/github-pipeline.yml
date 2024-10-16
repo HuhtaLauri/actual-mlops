@@ -68,9 +68,9 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          dvc fetch -r commits
+          dvc fetch -r raw
           find data/raw/commits/ -name "*json" | xargs dvc add
-          dvc push -r commits
+          dvc push -r raw
 
           echo "CHANGED_LINES=$(git status --porcelain | wc -l)" >> $GITHUB_ENV
 
@@ -137,9 +137,9 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          dvc fetch -r repos
+          dvc fetch -r raw
           find data/raw/repositories/ -name "*json" | xargs dvc add
-          dvc push -r repos
+          dvc push -r raw
 
           echo "CHANGED_LINES=$(git status --porcelain | wc -l)" >> $GITHUB_ENV
 
