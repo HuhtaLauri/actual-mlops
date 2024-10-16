@@ -1,4 +1,4 @@
-name: Validate Repos
+name: Validate Commits
 
 on:
   pull_request:
@@ -13,8 +13,8 @@ jobs:
 
   pipeline:
 
-    runs-on: self-hosted
-    if: startsWith(github.head_ref, 'ETL/repos/')
+    runs-on: self-hosted-azure
+    if: startsWith(github.head_ref, 'ETL/raw/')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -36,7 +36,14 @@ jobs:
         run: |
           dvc pull -r raw
 
-      - name: Validate
+      - name: Validate commits
+        run: |
+          dvc diff --json ${{github.base_ref}} HEAD \
+            | jq -r '.added[].path, .modified[].path, .deleted[].path, .renamed[].path' \
+            | grep -E "^data/raw/commits/.*\.json$" \
+            | xargs python -m src.quality.commits validate-files --files
+
+      - name: Validate repos
         run: |
           python -m src.quality.repos validate
 
