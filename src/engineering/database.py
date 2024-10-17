@@ -48,6 +48,7 @@ def init_db(commit: bool):
     with cursor(CONNECTION_STRING, commit) as cur:
         cur.execute(read_file_to_sql(Path("sql/github/ddl/commits_t.sql")))
         cur.execute(read_file_to_sql(Path("sql/github/ddl/authors_t.sql")))
+        cur.execute(read_file_to_sql(Path("sql/github/ddl/issues_t.sql")))
 
 
 if __name__ == "__main__":
