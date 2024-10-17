@@ -82,7 +82,7 @@ jobs:
         run: |
           dvc fetch -r raw
           find data/raw/commits/ -name "*json" | xargs dvc add
-          find data/raw/repos/ -name "*json" | xargs dvc add
+          find data/raw/repositories/ -name "*json" | xargs dvc add
           dvc push -r raw
 
           echo "CHANGED_LINES=$(git status --porcelain | wc -l)" >> $GITHUB_ENV
