@@ -8,6 +8,7 @@ import os
 from psycopg.sql import SQL
 import time
 from loguru import logger
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -49,6 +50,20 @@ def init_db(commit: bool):
         cur.execute(read_file_to_sql(Path("sql/github/ddl/commits_t.sql")))
         cur.execute(read_file_to_sql(Path("sql/github/ddl/authors_t.sql")))
         cur.execute(read_file_to_sql(Path("sql/github/ddl/issues_t.sql")))
+        cur.execute(read_file_to_sql(Path("sql/github/ddl/daily_issues_t.sql")))
+
+
+def daily_issues(num_days: int):
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=num_days)
+
+    with cursor(CONNECTION_STRING, commit=True) as cur:
+        sql = read_file_to_sql(Path("sql/github/etl/load-daily-issues.sql"))
+        while start_date <= end_date:
+            logger.info(f"Creating daily issues for date {start_date}")
+            cur.execute(sql.format(current_date=str(start_date)))
+            logger.info(f"Inserted {cur.rowcount} rows for date {start_date}")
+            start_date = start_date + timedelta(days=1)
 
 
 if __name__ == "__main__":
@@ -75,6 +90,10 @@ if __name__ == "__main__":
 
     load_parser.set_defaults(func=load)
 
+    daily_measures_parser = subparsers.add_parser("daily")
+    daily_measures_parser.add_argument("--num_days", type=int, default=3)
+    daily_measures_parser.set_defaults(func=daily_issues)
+
     args = parser.parse_args()
 
     func_name = args.func.__name__
@@ -82,3 +101,5 @@ if __name__ == "__main__":
         args.func(args.directory, args.load_script, args.commit)
     elif func_name == "init_db":
         args.func(args.commit)
+    elif func_name == "daily_issues":
+        args.func(args.num_days)

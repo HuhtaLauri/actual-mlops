@@ -15,7 +15,8 @@ import shutil
 import argparse
 from dataclasses import dataclass
 import concurrent.futures
-
+from copy import deepcopy
+from loguru import logger
 
 load_dotenv()
 
@@ -109,7 +110,7 @@ def collect_repositories(
     params = {"since": since, "until": until}
     url = construct_api_url("repos", repository.owner, repository.name)
 
-    repos = collect_and_paginate(url=url)
+    repos = collect_and_paginate(url=url, repo=repository)
     return repos
 
 
@@ -118,10 +119,10 @@ def collect_commits(
     since: datetime,
     until: datetime,
 ):
-    params = {"since": since, "until": until}
+    params = {"since": since, "until": until, "per_page": 100}
     url = construct_api_url("repos", repository.owner, repository.name, "commits")
 
-    commits = collect_and_paginate(url=url, params=params)
+    commits = collect_and_paginate(url=url, repo=repository, params=params)
 
     return commits
 
@@ -131,15 +132,29 @@ def collect_issues(
     since: datetime,
     until: datetime,
 ):
-    params = {"since": since, "until": until}
+    params = {"since": since, "until": until, "state": "all", "per_page": 100}
     url = construct_api_url("repos", repository.owner, repository.name, "issues")
 
-    issues = collect_and_paginate(url=url, params=params)
+    issues = collect_and_paginate(repo=repository, url=url, params=params)
+    open_issues = []
 
-    return issues
+    for issue in issues:
+        issue = deepcopy(issue)
+        if issue["state"] == "closed":
+            open_issues.append(construct_open_issue_row(issue))
+
+    all_issues = issues + open_issues
+
+    return all_issues
 
 
-def collect_and_paginate(url: str, params: dict = {}):
+def construct_open_issue_row(issue: dict):
+    issue["updated_at"] = issue["created_at"]
+    issue["state"] = "open"
+    return issue
+
+
+def collect_and_paginate(repo: Repository, url: str, params: dict = {}):
     data = []
 
     is_last = False
@@ -149,6 +164,7 @@ def collect_and_paginate(url: str, params: dict = {}):
         resp_data = resp.json()
         if isinstance(resp_data, list):
             for row in resp_data:
+                row["repo"] = repo.owner + "/" + repo.name
                 data.append(row)
         else:
             data = resp_data

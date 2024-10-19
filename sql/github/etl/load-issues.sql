@@ -12,7 +12,8 @@ INSERT INTO public.issues (
   created_at,
   updated_at,
   closed_at,
-  author_association
+  author_association,
+  repo
 )
 SELECT
     (data ->> 'url'),
@@ -28,7 +29,8 @@ SELECT
     (data ->> 'created_at')::TIMESTAMP,
     (data ->> 'updated_at')::TIMESTAMP,
     (data ->> 'closed_at')::TIMESTAMP,
-    (data ->> 'author_association')
+    (data ->> 'author_association'),
+    (data ->> 'repo')
 FROM staging
 LEFT JOIN LATERAL jsonb_array_elements(data -> 'labels') AS l(item) ON 1=1
 GROUP BY data

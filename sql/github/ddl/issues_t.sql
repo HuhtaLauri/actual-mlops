@@ -15,5 +15,6 @@ CREATE TABLE public.issues (
   updated_at timestamp,
   closed_at timestamp,
   author_association varchar,
+  repo varchar,
   PRIMARY KEY(id, updated_at)
 );

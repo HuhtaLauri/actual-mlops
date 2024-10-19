@@ -5,5 +5,6 @@ CREATE TABLE public.commits (
     node_id VARCHAR,
     author_id VARCHAR,
     created_at TIMESTAMP,
+    repo VARCHAR,
     CONSTRAINT commits_pk PRIMARY KEY(sha)
 );
