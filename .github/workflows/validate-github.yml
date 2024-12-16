@@ -13,7 +13,7 @@ jobs:
 
   pipeline:
 
-    runs-on: self-hosted-azure
+    runs-on: self-hosted
     if: startsWith(github.head_ref, 'ETL/raw/')
     steps:
       - name: Checkout repository
