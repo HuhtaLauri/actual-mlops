@@ -9,6 +9,7 @@ from psycopg.sql import SQL
 import time
 from loguru import logger
 from datetime import datetime, timedelta
+from typing import List
 
 load_dotenv()
 
@@ -20,7 +21,7 @@ def read_file_to_sql(filepath: Path) -> SQL:
         return SQL(f.read())  # type: ignore
 
 
-def load(directory: Directory, load_script: SQL, commit: bool):
+def load(directory: Directory, load_script: List[SQL], commit: bool):
     start = time.time()
     with cursor(CONNECTION_STRING, commit) as cur:
         staging_rowcount = 0
@@ -35,7 +36,8 @@ def load(directory: Directory, load_script: SQL, commit: bool):
             staging_rowcount += cur.rowcount
 
         cur.execute("SELECT COUNT(*) FROM staging")
-        cur.execute(load_script)
+        for load_script in load_scripts:
+            cur.execute(load_script)
 
         end = time.time()
         rowcount = cur.rowcount
@@ -48,7 +50,7 @@ def init_db(commit: bool):
     logger.info("initializing")
     with cursor(CONNECTION_STRING, commit) as cur:
         cur.execute(read_file_to_sql(Path("sql/github/ddl/commits_t.sql")))
-        cur.execute(read_file_to_sql(Path("sql/github/ddl/authors_t.sql")))
+        cur.execute(read_file_to_sql(Path("sql/github/ddl/users_t.sql")))
         cur.execute(read_file_to_sql(Path("sql/github/ddl/issues_t.sql")))
         cur.execute(read_file_to_sql(Path("sql/github/ddl/daily_issues_t.sql")))
 
@@ -76,7 +78,7 @@ if __name__ == "__main__":
         "--directory", "-d", type=lambda x: Directory(x), required=True
     )
     load_parser.add_argument(
-        "--load_script", "-S", type=lambda x: read_file_to_sql(Path(x))
+        "--load_script", "-S", nargs="+", type=str
     )
     load_parser.add_argument("--commit", "-c", default=False, action="store_true")
 
@@ -98,7 +100,8 @@ if __name__ == "__main__":
 
     func_name = args.func.__name__
     if func_name == "load":
-        args.func(args.directory, args.load_script, args.commit)
+        load_scripts = list(map(read_file_to_sql, args.load_script))
+        args.func(args.directory, load_scripts, args.commit)
     elif func_name == "init_db":
         args.func(args.commit)
     elif func_name == "daily_issues":
