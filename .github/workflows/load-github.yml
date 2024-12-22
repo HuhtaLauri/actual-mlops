@@ -14,7 +14,7 @@ jobs:
 
   pipeline:
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: startsWith(github.head_ref, 'ETL/raw/') && github.event.pull_request.merged == true
     steps:
       - name: Checkout repository
