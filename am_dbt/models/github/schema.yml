@@ -1,0 +1,20 @@
+
+version: 2
+
+models:
+  - name: top_committers_all_time
+    description: ""
+    columns:
+      - name: login
+        description: "Username"
+        data_tests:
+          - unique
+          - not_null
+
+sources:
+  - name: github
+    database: github
+    schema: public
+    tables:
+      - name: commits
+      - name: users

@@ -1,0 +1,23 @@
+am_dbt:
+  outputs:
+    dev:
+      dbname: github
+      host: localhost
+      pass: postgres
+      port: 9432
+      schema: public
+      threads: 2
+      type: postgres
+      user: postgres
+
+    prod:
+      dbname: github
+      host: "{{ env_var('DBT_DB_HOST')}}"
+      pass: "{{ env_var('DBT_DB_PASS')}}"
+      port: 5432
+      schema: public
+      threads: 2
+      type: postgres
+      user: "{{ env_var('DBT_DB_USER')}}"
+
+    target: dev
